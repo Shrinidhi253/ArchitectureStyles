@@ -1,0 +1,32 @@
+image: python:3.12-slim
+
+stages: [test]
+
+.module:
+  stage: test
+  before_script:
+    - pip install -q -r requirements.txt
+  script:
+    - python -m pytest -q --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: $MODULE/report.xml
+
+module1-pipeline:
+  extends: .module
+  variables: { MODULE: module1-pipeline }
+  before_script:
+    - cd $MODULE && pip install -q -r requirements.txt
+
+module2-microservices:
+  extends: .module
+  variables: { MODULE: module2-microservices }
+  before_script:
+    - cd $MODULE && pip install -q -r requirements.txt
+
+module3-pubsub:
+  extends: .module
+  variables: { MODULE: module3-pubsub }
+  before_script:
+    - cd $MODULE && pip install -q -r requirements.txt
