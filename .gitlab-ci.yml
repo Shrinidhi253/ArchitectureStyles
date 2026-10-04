@@ -2,12 +2,16 @@ image: python:3.12-slim
 
 stages: [test]
 
+# All commands use `python3 -m ...` so the jobs work both inside the Docker image
+# and on runners that execute in a shell where only `python3` is installed.
 .module:
   stage: test
   before_script:
-    - pip install -q -r requirements.txt
+    - cd $MODULE
+    - python3 --version
+    - python3 -m pip install -q -r requirements.txt
   script:
-    - python -m pytest -q --junitxml=report.xml
+    - python3 -m pytest -q --junitxml=report.xml
   artifacts:
     when: always
     reports:
@@ -16,17 +20,11 @@ stages: [test]
 module1-pipeline:
   extends: .module
   variables: { MODULE: module1-pipeline }
-  before_script:
-    - cd $MODULE && pip install -q -r requirements.txt
 
 module2-microservices:
   extends: .module
   variables: { MODULE: module2-microservices }
-  before_script:
-    - cd $MODULE && pip install -q -r requirements.txt
 
 module3-pubsub:
   extends: .module
   variables: { MODULE: module3-pubsub }
-  before_script:
-    - cd $MODULE && pip install -q -r requirements.txt
