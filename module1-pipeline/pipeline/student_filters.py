@@ -120,4 +120,33 @@ class ThresholdAlarm(Filter):
     name = "threshold_alarm"
 
     def process(self, record: Record) -> Iterable[Record]:
-        raise NotImplementedError("TODO: implement ThresholdAlarm.process")
+      output_records = [record]
+
+      reading_type = record.get("type")
+      current_value = float(record["value"])
+      
+      if reading_type in THRESHOLDS:
+        threshold_value = float(THRESHOLDS[reading_type])
+        
+        if current_value > threshold_value:
+                if current_value > (threshold_value * CRITICAL_FACTOR):
+                    severity_level = "critical"
+                else:
+                    severity_level = "warning"
+                    
+                alarm_record = {
+                    "kind": "alarm",
+                    "ts": record["ts"],
+                    "device_id": record["device_id"],
+                    "room": record["room"],
+                    "type": reading_type,
+                    "value": current_value,
+                    "threshold": threshold_value,
+                    "severity": severity_level,
+                }
+                output_records.append(alarm_record)
+
+        return output_records
+      
+      
+        #raise NotImplementedError("TODO: implement ThresholdAlarm.process")
