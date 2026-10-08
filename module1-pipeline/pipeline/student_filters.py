@@ -40,7 +40,23 @@ class ConvertUnits(Filter):
     name = "convert_units"
 
     def process(self, record: Record) -> Iterable[Record]:
-        raise NotImplementedError("TODO: implement ConvertUnits.process")
+      unit = record.get("unit")
+      
+      if unit in ("C", "%", "ppm"):
+        return[record]
+      
+      if unit == "F":
+        new_record = record.copy()
+        celsius = (new_record["value"]- 32.0) * (5.0/9.0)
+        new_record["value"] = round (celsius, 2)
+        new_record["unit"] = "C"
+        return [new_record]
+      
+      raise ValueError(f"Unknown unit: {unit}")
+        
+      
+        
+        #raise NotImplementedError("TODO: implement ConvertUnits.process")
 
 
 class MovingAverage(Filter):
