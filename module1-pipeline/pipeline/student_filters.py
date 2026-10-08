@@ -80,7 +80,30 @@ class MovingAverage(Filter):
         self._history: Dict[str, List[float]] = {}
 
     def process(self, record: Record) -> Iterable[Record]:
-        raise NotImplementedError("TODO: implement MovingAverage.process")
+      new_record = record.copy()
+      device_id = new_record["device_id"]
+      current_value = float(new_record["value"])
+      
+      new_record["raw_value"]= new_record["value"]
+      
+      if device_id not in self._history:
+        self._history[device_id] = []
+        
+      self._history[device_id].append(current_value)
+      
+      if len(self._history[device_id]) > self.window:
+        self._history[device_id].pop(0)
+        
+      window_values = self._history[device_id]
+      total_sum = 0.0
+      for val in window_values:
+        total_sum += val
+      moving_average = total_sum / len(window_values)
+      
+      new_record["value"] = round(moving_average, 2)
+      return [new_record]
+    
+    #raise NotImplementedError("TODO: implement MovingAverage.process")
 
 
 class ThresholdAlarm(Filter):
