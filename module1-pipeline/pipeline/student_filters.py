@@ -40,23 +40,20 @@ class ConvertUnits(Filter):
     name = "convert_units"
 
     def process(self, record: Record) -> Iterable[Record]:
-      unit = record.get("unit")
+      unit = record.get("unit")                #Extracts the unit string from the dictionary.
       
-      if unit in ("C", "%", "ppm"):
-        return[record]
+      if unit in ("C", "%", "ppm"):           
+        return[record]                         #Canonical units already match the system standard so they pass through immediately without modification.
       
       if unit == "F":
-        new_record = record.copy()
-        celsius = (new_record["value"]- 32.0) * (5.0/9.0)
+        new_record = record.copy()             #Copied so that we don't accidentally edit the original reading.
+        celsius = (new_record["value"]- 32.0) * (5.0/9.0)    #Standard Fahrenheit to Celsius formula.
         new_record["value"] = round (celsius, 2)
         new_record["unit"] = "C"
         return [new_record]
       
-      raise ValueError(f"Unknown unit: {unit}")
+      raise ValueError(f"Unknown unit: {unit}")   #If a unit is unknown (like "K"), throwing an error tells the pipeline to drop that bad row instead of crashing.
         
-      
-        
-        #raise NotImplementedError("TODO: implement ConvertUnits.process")
 
 
 class MovingAverage(Filter):
@@ -80,7 +77,28 @@ class MovingAverage(Filter):
         self._history: Dict[str, List[float]] = {}
 
     def process(self, record: Record) -> Iterable[Record]:
-        raise NotImplementedError("TODO: implement MovingAverage.process")
+      new_record = record.copy()                       # Copied record so we don't change the original.
+      device_id = new_record["device_id"]
+      current_value = float(new_record["value"])
+      
+      new_record["raw_value"]= new_record["value"]     # Saves the original value
+      
+      if device_id not in self._history:               #Tracks history per device
+        self._history[device_id] = []
+        
+      self._history[device_id].append(current_value)
+      
+      if len(self._history[device_id]) > self.window:   #Keeps only the last N readings
+        self._history[device_id].pop(0)
+        
+      window_values = self._history[device_id]          #Calculates average without any extra libraries.
+      total_sum = 0.0
+      for val in window_values:
+        total_sum += val
+      moving_average = total_sum / len(window_values)
+      
+      new_record["value"] = round(moving_average, 2)
+      return [new_record]
 
 
 class ThresholdAlarm(Filter):
@@ -97,4 +115,31 @@ class ThresholdAlarm(Filter):
     name = "threshold_alarm"
 
     def process(self, record: Record) -> Iterable[Record]:
-        raise NotImplementedError("TODO: implement ThresholdAlarm.process")
+      output_records = [record]                         # Always output the reading first
+
+      reading_type = record.get("type")
+      current_value = float(record["value"])
+      
+      if reading_type in THRESHOLDS:
+        threshold_value = float(THRESHOLDS[reading_type])
+        
+        if current_value > threshold_value:                # If reading is too high,raises an alarm
+                if current_value > (threshold_value * CRITICAL_FACTOR):   # Checks danger level
+                    severity_level = "critical"
+                else:
+                    severity_level = "warning"
+                    
+                alarm_record = {                            # Adds an alarm right after the reading
+                    "kind": "alarm",
+                    "ts": record["ts"],
+                    "device_id": record["device_id"],
+                    "room": record["room"],
+                    "type": reading_type,
+                    "value": current_value,
+                    "threshold": threshold_value,
+                    "severity": severity_level,
+                }
+                output_records.append(alarm_record)
+
+        return output_records
+      
