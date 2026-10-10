@@ -69,7 +69,19 @@ def get_device(device_id):
     return jsonify(dict(row))
 
 
-# TODO (Feature 1): DELETE /devices/<id>
+# (Feature 1): DELETE /devices/<id>
+@app.delete("/devices/<int:device_id>")
+def delete_device(device_id): # the delete request gets routed here
+    db = get_db()
+
+    cursor = db.execute("DELETE FROM devices WHERE id = ?;", (device_id,))
+    db.commit()
+
+    num_deleted_rows = cursor.rowcount
+    if num_deleted_rows == 0: #if no rows are deleted, the device is not found, so return an error message
+        return jsonify(error = "device id not found"), 404
+    
+    return jsonify(deleted = num_deleted_rows), 200 #if the device has been deleted successfully, return the number of deleted row.
 
 
 @app.errorhandler(Exception)
