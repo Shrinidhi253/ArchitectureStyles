@@ -40,23 +40,20 @@ class ConvertUnits(Filter):
     name = "convert_units"
 
     def process(self, record: Record) -> Iterable[Record]:
-      unit = record.get("unit")
+      unit = record.get("unit")                #Extracts the unit string from the dictionary.
       
-      if unit in ("C", "%", "ppm"):
-        return[record]
+      if unit in ("C", "%", "ppm"):           
+        return[record]                         #Canonical units already match the system standard so they pass through immediately without modification.
       
       if unit == "F":
-        new_record = record.copy()
-        celsius = (new_record["value"]- 32.0) * (5.0/9.0)
+        new_record = record.copy()             #Copied so that we don't accidentally edit the original reading.
+        celsius = (new_record["value"]- 32.0) * (5.0/9.0)    #Standard Fahrenheit to Celsius formula.
         new_record["value"] = round (celsius, 2)
         new_record["unit"] = "C"
         return [new_record]
       
-      raise ValueError(f"Unknown unit: {unit}")
+      raise ValueError(f"Unknown unit: {unit}")   #If a unit is unknown (like "K"), throwing an error tells the pipeline to drop that bad row instead of crashing.
         
-      
-        
-        #raise NotImplementedError("TODO: implement ConvertUnits.process")
 
 
 class MovingAverage(Filter):
@@ -80,21 +77,21 @@ class MovingAverage(Filter):
         self._history: Dict[str, List[float]] = {}
 
     def process(self, record: Record) -> Iterable[Record]:
-      new_record = record.copy()
+      new_record = record.copy()                       # Copied record so we don't change the original.
       device_id = new_record["device_id"]
       current_value = float(new_record["value"])
       
-      new_record["raw_value"]= new_record["value"]
+      new_record["raw_value"]= new_record["value"]     # Saves the original value
       
-      if device_id not in self._history:
+      if device_id not in self._history:               #Tracks history per device
         self._history[device_id] = []
         
       self._history[device_id].append(current_value)
       
-      if len(self._history[device_id]) > self.window:
+      if len(self._history[device_id]) > self.window:   #Keeps only the last N readings
         self._history[device_id].pop(0)
         
-      window_values = self._history[device_id]
+      window_values = self._history[device_id]          #Calculates average without any extra libraries.
       total_sum = 0.0
       for val in window_values:
         total_sum += val
@@ -102,8 +99,6 @@ class MovingAverage(Filter):
       
       new_record["value"] = round(moving_average, 2)
       return [new_record]
-    
-    #raise NotImplementedError("TODO: implement MovingAverage.process")
 
 
 class ThresholdAlarm(Filter):
@@ -120,7 +115,7 @@ class ThresholdAlarm(Filter):
     name = "threshold_alarm"
 
     def process(self, record: Record) -> Iterable[Record]:
-      output_records = [record]
+      output_records = [record]                         # Always output the reading first
 
       reading_type = record.get("type")
       current_value = float(record["value"])
@@ -128,13 +123,13 @@ class ThresholdAlarm(Filter):
       if reading_type in THRESHOLDS:
         threshold_value = float(THRESHOLDS[reading_type])
         
-        if current_value > threshold_value:
-                if current_value > (threshold_value * CRITICAL_FACTOR):
+        if current_value > threshold_value:                # If reading is too high,raises an alarm
+                if current_value > (threshold_value * CRITICAL_FACTOR):   # Checks danger level
                     severity_level = "critical"
                 else:
                     severity_level = "warning"
                     
-                alarm_record = {
+                alarm_record = {                            # Adds an alarm right after the reading
                     "kind": "alarm",
                     "ts": record["ts"],
                     "device_id": record["device_id"],
@@ -148,5 +143,3 @@ class ThresholdAlarm(Filter):
 
         return output_records
       
-      
-        #raise NotImplementedError("TODO: implement ThresholdAlarm.process")
