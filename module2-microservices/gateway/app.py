@@ -53,7 +53,60 @@ def device(device_id):
     return forward(DEVICE_URL, f"/devices/{device_id}")
 
 
-# TODO (Feature 1): DELETE /api/devices/<id>
+# (Feature 1): DELETE /api/devices/<id>
+@app.delete("/api/devices/<int:device_id>")
+def route_delete_devices_request(device_id): #flask will pass the device_id from the url to this function
+    # readings db holds a reference to device_id, i.e. readings depends on device
+    # so delete readings first before deleting devices
+
+    # DELETE READINGS:
+    try:
+        #create a delete request to the readings_service with the device_id parameter
+        readings_response = requests.delete(
+                                url = f"{READING_URL}/readings",
+                                params = {"device_id" : device_id},
+                                timeout = 5
+                            )
+    except requests.RequestException as request_exception:
+        return jsonify(
+                error = "Reading service unavailable. Device readings could not be deleted",
+                detail = str(request_exception)
+            ), 503
+    
+    # if the reading service responded with any error:
+    if readings_response.status_code != 200:
+        return jsonify (
+                error = "Reading service failed. Device readings could not be deleted.",
+                upstream_status = readings_response.status_code
+            ), 502
+    
+    # DELETE THE DEVICE
+    try:
+        device_response = requests.delete(
+                                url = f"{DEVICE_URL}/devices/{device_id}",
+                                timeout = 5
+                            )
+    except requests.RequestException as request_exception:
+        return jsonify(
+                error = "Device service unavailable. Readings were deleted but device still exists.",
+                detail = str(request_exception)
+            ), 503
+
+    #if the device service responded with any error:
+    if device_response.status_code == 404:
+        return jsonify(error = "Device not found."), 404
+    
+    elif device_response.status_code != 200:
+        return jsonify(
+                error = "Device service failed. Readings are deleted but device still exists.",
+                upstream_status = device_response.status_code
+            ), 502
+
+    #if both readings and device have been deleted successfully:
+    return jsonify(
+            deleted = device_id,
+            num_readings_deleted = readings_response.json().get("deleted")
+        ), 200    
 
 # ---- readings ----------------------------------------------------------
 @app.route("/api/readings", methods=["GET", "POST"])
