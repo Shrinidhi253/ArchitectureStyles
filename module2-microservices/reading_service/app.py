@@ -110,10 +110,10 @@ def delete_readings():
     
     #if a device_is given in the request, delete the rows for that device in the readings db
     db = get_db()
-    num_removed = db.execute("DELETE FROM readings WHERE device_id = ?;", (device_id,))
+    cursor = db.execute("DELETE FROM readings WHERE device_id = ?;", (device_id,))
     db.commit()
 
-    return jsonify(deleted = num_removed), 200 #return the number of rows deleted as a part success message.
+    return jsonify(deleted = cursor.rowcount), 200 #return the number of rows deleted as a part success message.
 
 
 
