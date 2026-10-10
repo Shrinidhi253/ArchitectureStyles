@@ -8,6 +8,7 @@ import os
 import sqlite3
 
 from flask import Flask, g, jsonify, request
+import secrets
 
 DB_PATH = os.environ.get("AUTH_DB", os.path.join(os.path.dirname(__file__), "auth.db"))
 app = Flask(__name__)
@@ -72,4 +73,32 @@ def register_user():
     
     return jsonify(user_id = cursor.lastrowid), 201
 
-# TODO (Feature 2.2) POST /api/auth/login
+# (Feature 2.2) POST /login
+@app.post("/login")
+def login_user():
+    body = request.get_json(silent = True) or {}
+
+    # check for missing fields as before
+    missing_fields = [field for field in ("username", "password") if not body.get(field)]
+
+    if missing_fields:
+        return jsonify(error = f"Missing fields: {','.join(missing_fields)}"), 400
+
+
+    username, password = body.get("username"), body.get("password")
+    db = get_db()
+
+    user_row = db.execute("SELECT * FROM users WHERE users.username = ?;", (username,)).fetchone()
+
+    # check for invalid username and password
+    if user_row is None or user_row["password"] != password: 
+        return jsonify(error = "Invalid username or password"), 401
+    
+
+    # create a token for the user
+    token = secrets.token_urlsafe(32) #32 bit token
+
+    db.execute("INSERT INTO tokens(token, user_id) VALUES (?, ?);", (token, user_row["user_id"]))
+    db.commit()
+    
+    return jsonify(token = token), 200
