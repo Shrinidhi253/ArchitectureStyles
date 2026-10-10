@@ -48,5 +48,28 @@ def init_db():
 def health():
     return jsonify(service = "auth", status = "ok")
 
-# TODO (Feature 2.1) POST /api/auth/register
+# (Feature 2.1) POST /register
+@app.post("/register")
+def register_user():
+    body = request.get_json(silent = True) or {}
+
+    # return an error with the fields missing in the body of the request (if any)
+    missing_fields = [field for field in ("username", "password") if not body.get(field)]
+
+    if missing_fields:
+        return jsonify(error = f"Missing fields: {','.join(missing_fields)}"), 400
+    
+    # Add the username and the password to the database and return the user's user id
+    db = get_db()
+    username, password = body.get("username"), body.get("password")
+    
+    try:
+        cursor = db.execute("INSERT INTO users(username, password) VALUES (?, ?);", (username, password))
+        db.commit()
+    
+    except sqlite3.IntegrityError: # if this exception occurs during the insert, it is because the UNIQUE check for the username field failed, i.e. username exists
+        return jsonify(error = "Username already exists"), 409
+    
+    return jsonify(user_id = cursor.lastrowid), 201
+
 # TODO (Feature 2.2) POST /api/auth/login
