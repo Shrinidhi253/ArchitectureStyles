@@ -34,7 +34,7 @@ def init_db():
         db.execute("""CREATE TABLE IF NOT EXISTS audit_log (
                         log_id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL,
-                        timestamp TIMESTAMP NOT NULL,
+                        ts TIMESTAMP NOT NULL,
                         action TEXT NOT NULL CHECK (action IN ('CREATE', 'DELETE', 'RETRIEVE')),
                         resource TEXT NOT NULL,
                         outcome TEXT NOT NULL CHECK (outcome IN ('ok', 'error')),
@@ -73,16 +73,16 @@ def add_log_entry(): #record an entry in the log
     db = get_db()
 
     #if timestamp is provided use that, or use the current time as the timestamp
-    timestamp = body["timestamp"] or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    timestamp = body.get("ts") or datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    cursor = db.execute("INSERT INTO audit_log(username, timestamp, action, resource, outcome, detail) VALUES (?, ?, ?, ?, ?, ?);",
+    cursor = db.execute("INSERT INTO audit_log(username, ts, action, resource, outcome, detail) VALUES (?, ?, ?, ?, ?, ?);",
                    (body["username"], timestamp, body["action"], body["resource"], body["outcome"], body.get("detail"))
                 )
     
     db.commit()
 
     #get the added row for success message
-    added_row = db.execute("SELECT * FROM audit_log WHERE log_id = ?;", (cursor.lastrowid,))
+    added_row = db.execute("SELECT * FROM audit_log WHERE log_id = ?;", (cursor.lastrowid,)).fetchone()
     
     return jsonify(dict(added_row)), 201
 
