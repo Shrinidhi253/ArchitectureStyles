@@ -16,6 +16,7 @@ No publisher needs to change for this feature: the power topic already exists.
 from __future__ import annotations
 
 import argparse
+import os
 import threading
 from datetime import datetime
 from typing import Dict, Optional
@@ -66,7 +67,7 @@ class EnergyLogger:
         self._lock = threading.Lock()
 
     def start(self) -> None:
-        # Subscribes using the pattern building/+/power specified in the instructions
+        # Subscribes using the topic building/+/power specified in the instructions
         self.client.subscribe("building/+/power", self.on_power)
 
     def on_power(self, topic: str, payload) -> None:
@@ -94,7 +95,14 @@ class EnergyLogger:
             pass
 
     def write_csv(self) -> None:
-        raise NotImplementedError("TODO: write room,kwh rows to self.out_path")
+    # Ensures that the output directory exists before trying to write on it
+        os.makedirs(os.path.dirname(self.out_path), exist_ok=True)
+        
+        with open(self.out_path, "w", encoding="utf-8") as f:
+            f.write("room,kwh\n")
+            # round() function implemented, since it automatically formats, for example, 1.5 instead of 1.5000 
+            for room, kwh in self.acc.rows():
+                f.write(f"{room},{kwh}\n")
 
 
 def main() -> None:
