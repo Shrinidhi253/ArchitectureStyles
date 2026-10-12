@@ -139,7 +139,7 @@ def check_token():
                                          timeout = 2
                                         )
     except requests.RequestException as request_exception:
-        return jsonify("Auth service unavailable", detail = str(request_exception)), 503
+        return jsonify(error = "auth service unavailable", detail = str(request_exception)), 503
     
     #return errors from the auth services
     if validate_response.status_code == 401:

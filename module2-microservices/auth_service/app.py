@@ -110,7 +110,7 @@ def validate_session(): #checks if the token is valid
     if not auth_header.startswith("Bearer "): #The header is of the format Authorization: Bearer <credential>
         return jsonify(error = "missing or malformed authorization header"), 401
     
-    token = auth_header[len("Bearer"):].strip #only slice the token credentials
+    token = auth_header[len("Bearer"):].strip() #only slice the token credentials
 
     #check if the token exists in the database. if the token exists, return the username of the user
     db = get_db()
@@ -123,3 +123,7 @@ def validate_session(): #checks if the token is valid
         return jsonify(error = "invalid token"), 401
     
     return jsonify(username = row["username"]), 200
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="127.0.0.1", port=int(os.environ.get("AUTH_PORT", 5004)))
