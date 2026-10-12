@@ -66,10 +66,32 @@ class EnergyLogger:
         self._lock = threading.Lock()
 
     def start(self) -> None:
-        raise NotImplementedError("TODO: subscribe to building/+/power")
+        # Subscribes using the pattern building/+/power specified in the instructions
+        self.client.subscribe("building/+/power", self.on_power)
 
     def on_power(self, topic: str, payload) -> None:
-        raise NotImplementedError("TODO: parse room/ts/watts, update the accumulator, rewrite the CSV")
+        # Ignores it if the payload is not a dictionary
+        if not isinstance(payload, dict):
+            return
+        
+        try:
+            # Extracts the room from the topic
+            room = topic.split("/")[1] # example: "building/D303/power" -> "D303"
+            
+            # Extract fields. KeyError is raised if anything is missing
+            ts = payload["ts"]
+            
+            # Convert watts. ValueError is raised if it is a text instead of a number
+            watts = float(payload["watts"])
+            
+            # Use the thread lock to prevent concurrent write issues 
+            with self._lock:
+                self.acc.add(room, ts, watts)
+                self.write_csv()
+                
+        except (KeyError, ValueError, TypeError):
+            # In case the payload is malformed, we pass, so we guarantee the logger never crashes as required
+            pass
 
     def write_csv(self) -> None:
         raise NotImplementedError("TODO: write room,kwh rows to self.out_path")
