@@ -8,6 +8,7 @@ import os
 import sqlite3
 
 from flask import Flask, g, jsonify, request
+from datetime import datetime, timezone
 
 DB_PATH = os.environ.get("AUDIT_DB", os.path.join(os.path.dirname(__file__), "audit_log.db"))
 app = Flask(__name__)
@@ -50,10 +51,46 @@ def health():
 def get_audit_log():
     db = get_db()
 
-    rows = db.execute("SELECT * FROM audit_log;").fetchall()
+    rows = db.execute("SELECT * FROM audit_log ORDER BY log_id;").fetchall() #the output is sorted in the insertion order
     return jsonify([dict(row) for row in rows]) #return a list of dictionaries of each row in the log
 
-# TODO (Feature 3.2) POST /audit
+# (Feature 3.2) POST /audit
+@app.post("/audit")
+def add_log_entry(): #record an entry in the log
+    body = request.get_json(silent = True) or {}
+
+    missing_fields = [field for field in ("username", "action", "resource", "outcome") if not body.get(field)]
+    if missing_fields:
+        return jsonify(error = f"Missing fields: {', '.join(missing_fields)}. Could not add log entry."), 400
+    
+    #check if provided action and outcome values are valid.
+    if body["action"] not in ("CREATE", "DELETE", "RETRIEVE"):
+        return jsonify(error = "action must be CREATE, DELETE, or RETRIEVE"), 400
+        
+    if body["outcome"] not in ("ok", "error"):
+        return jsonify(error = "outcome must be ok, or error"), 400
+    
+    db = get_db()
+
+    #if timestamp is provided use that, or use the current time as the timestamp
+    timestamp = body["timestamp"] or datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    cursor = db.execute("INSERT INTO audit_log(username, timestamp, action, resource, outcome, detail) VALUES (?, ?, ?, ?, ?, ?);",
+                   (body["username"], timestamp, body["action"], body["resource"], body["outcome"], body.get("detail"))
+                )
+    
+    db.commit()
+
+    #get the added row for success message
+    added_row = db.execute("SELECT * FROM audit_log WHERE log_id = ?;", (cursor.lastrowid,))
+    
+    return jsonify(dict(added_row)), 201
+
+#Handling every other error
+@app.errorhandler(Exception)
+def unhandled(exc):
+    app.logger.exception("unhandled error")
+    return jsonify(error="internal error", detail=str(exc)), 500
 
 if __name__ == "__main__":
     init_db()
