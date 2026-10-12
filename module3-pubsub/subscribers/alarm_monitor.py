@@ -51,7 +51,16 @@ class AlarmStateMachine:
         """Feature 3: acknowledge every active alarm of the room. Returns #acknowledged."""
         # TODO (Feature 3): move every (room, *) entry that is in state ALARM to ACKED
         # and return how many were acknowledged.
-        raise NotImplementedError("TODO: implement AlarmStateMachine.on_ack")
+
+        count = 0
+        # It will iterate over all current states to find active alarms in the current room
+        for key in list(self.state.keys()):
+            current_room, rtype = key
+            # If it belongs to the target room and the state is is currently in ALARM state, acknowledge it
+            if current_room == room and self.state[key] == ALARM:
+                self.state[key] = ACKED
+                count += 1
+        return count
 
 
 class AlarmMonitor:
