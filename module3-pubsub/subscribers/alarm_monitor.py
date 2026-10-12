@@ -49,7 +49,7 @@ class AlarmStateMachine:
 
     def on_ack(self, room: str) -> int:
         """Feature 3: acknowledge every active alarm of the room. Returns #acknowledged."""
-        # TODO (Feature 3): move every (room, *) entry that is in state ALARM to ACKED
+        # (Feature 3): move every (room, *) entry that is in state ALARM to ACKED
         # and return how many were acknowledged.
 
         count = 0
@@ -73,7 +73,9 @@ class AlarmMonitor:
     def start(self) -> None:
         self.client.subscribe("building/+/temperature", self.on_reading)
         self.client.subscribe("building/+/co2", self.on_reading)
-        # TODO (Feature 3): subscribe to acknowledgements  alarm/+/ack  -> self.on_ack
+        # (Feature 3): subscribe to acknowledgements  alarm/+/ack  -> self.on_ack
+        # Subscribe to the acknowledgement topic using "+" wildcards for the room
+        self.client.subscribe("alarm/+/ack", self.on_ack)
 
     def on_reading(self, topic: str, payload) -> None:
         try:
