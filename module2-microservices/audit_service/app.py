@@ -36,7 +36,7 @@ def init_db():
                         timestamp TIMESTAMP NOT NULL,
                         action TEXT NOT NULL CHECK (action IN ('CREATE', 'DELETE', 'RETRIEVE')),
                         resource TEXT NOT NULL,
-                        outcome JSON NOT NULL CHECK (outcome IN ('ok', 'error')),
+                        outcome TEXT NOT NULL CHECK (outcome IN ('ok', 'error')),
                         detail TEXT
                   );""")
         
@@ -44,6 +44,16 @@ def init_db():
 @app.get("/health")
 def health():
     return jsonify(service = "audit", status = "ok")
+
+# (Feature 3.1) GET /audit
+@app.get("/audit")
+def get_audit_log():
+    db = get_db()
+
+    rows = db.execute("SELECT * FROM audit_log;").fetchall()
+    return jsonify([dict(row) for row in rows]) #return a list of dictionaries of each row in the log
+
+# TODO (Feature 3.2) POST /audit
 
 if __name__ == "__main__":
     init_db()
