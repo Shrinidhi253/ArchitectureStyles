@@ -12,6 +12,9 @@ from flask import Flask, Response, jsonify, request
 DEVICE_URL = os.environ.get("DEVICE_URL", "http://127.0.0.1:5001")
 READING_URL = os.environ.get("READING_URL", "http://127.0.0.1:5002")
 ALERT_URL = os.environ.get("ALERT_URL", "http://127.0.0.1:5003")
+AUTH_URL = os.environ.get("AUTH_URL", "http://127.0.0.1:5004")
+PUBLIC_PATHS = {"/api/auth/register", "/api/auth/login"}
+
 app = Flask(__name__)
 
 
@@ -120,10 +123,43 @@ def alerts():
     return forward(ALERT_URL, "/alerts")
 
 
-# TODO (Feature 2): /api/auth/register, /api/auth/login and a check that every
-#                   other /api/* request carries a valid token.
-# TODO (Feature 3): record every /api/* action in an audit service; GET /api/audit.
+# (Feature 2): /api/auth/register, /api/auth/login and a check that every
+#              other /api/* request carries a valid token.
+@app.before_request
+def check_token():
+    #check token should only happen for /api/* requests that are NOT login or register (because you get a token only when you login)
+    if (not request.path.startswith("/api/") #i.e. not an /api/* request
+        or request.path in PUBLIC_PATHS      #i.e. register/ login request
+       ):
+            return None
+    
+    try:
+        validate_response = requests.get(f"{AUTH_URL}/validate",
+                                         headers = {"Authorization" : request.headers.get("Authorization", "")}, #pass the credentials as Authorization header
+                                         timeout = 2
+                                        )
+    except requests.RequestException as request_exception:
+        return jsonify("Auth service unavailable", detail = str(request_exception)), 503
+    
+    #return errors from the auth services
+    if validate_response.status_code == 401:
+        return jsonify(error = "missing or invalid token"), 401
+    
+    if validate_response.status_code != 200:
+        return jsonify(error = "auth service error"), 502
+    
+    return None
+        
+#forward register and login requests
+@app.post("/api/auth/register")
+def auth_register():
+    return forward(AUTH_URL, "/register")
 
+@app.post("/api/auth/login")
+def auth_login():
+    return forward(AUTH_URL, "/login")
+
+# TODO (Feature 3): record every /api/* action in an audit service; GET /api/audit.
 
 @app.errorhandler(404)
 def not_found(_exc):
