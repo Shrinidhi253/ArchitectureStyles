@@ -93,9 +93,20 @@ class AlarmMonitor:
             print(f"[alarm_monitor] ALARM {room} {alarm}")
 
     def on_ack(self, topic: str, payload) -> None:
-        # TODO (Feature 3): parse the room from the topic, call machine.on_ack(room)
+        # (Feature 3): parse the room from the topic, call machine.on_ack(room)
         # under the lock and print a confirmation.
-        raise NotImplementedError("TODO: implement AlarmMonitor.on_ack")
+        try:
+            # Parse the room from the topic string, for example, "alarm/B201/ack" -> "B201"
+            parts = topic.split("/")
+            room = parts[1]
+        except IndexError:
+            return
+            
+        # It calls the state machine under the lock to prevent existing modifications
+        with self._lock:
+            acknowledged_count = self.machine.on_ack(room)
+            
+        print(f"[alarm_monitor] Operator ACKed {acknowledged_count} alarms for room {room}")
 
 
 def main() -> None:
