@@ -32,11 +32,30 @@ class EnergyAccumulator:
 
     def add(self, room: str, ts: str, watts: float) -> float:
         """Register one power report; return the room's total kWh (rounded to 4 decimals)."""
-        raise NotImplementedError("TODO: implement EnergyAccumulator.add")
+        current_ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        
+        # Initializes the room if it's the first time we see it
+        if room not in self.kwh:
+            self.kwh[room] = 0.0
+            
+        # Calculates the time difference in hours, if we have a previous timestamp
+        if room in self._last_ts:
+            delta = current_ts - self._last_ts[room]
+            hours = delta.total_seconds() / 3600.0
+            
+            # It only accumulates watts if time actually moved forward
+            if hours > 0:
+                self.kwh[room] += (watts * hours) / 1000.0
+                
+        # Updates the last seen timestamp for this room
+        self._last_ts[room] = current_ts
+        return round(self.kwh[room], 4)
 
     def rows(self):
         """Yield (room, kwh) sorted by room."""
-        raise NotImplementedError("TODO: implement EnergyAccumulator.rows")
+        # Yield the items alphabetically by room name to satisfy the sorting requirement
+        for room in sorted(self.kwh.keys()):
+            yield room, round(self.kwh[room], 4)
 
 
 class EnergyLogger:
