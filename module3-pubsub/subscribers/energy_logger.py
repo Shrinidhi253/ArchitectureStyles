@@ -77,7 +77,7 @@ class EnergyLogger:
         
         try:
             # Extracts the room from the topic
-            room = topic.split("/")[1] # example: "building/D303/power" -> "D303"
+            room = topic.split("/")[1] # example: "building/B201/power" -> "B201"
             
             # Extract fields. KeyError is raised if anything is missing
             ts = payload["ts"]

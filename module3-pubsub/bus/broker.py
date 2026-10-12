@@ -128,9 +128,17 @@ class Broker:
         with self._lock:
             if conn in self._subscriptions:
                 self._subscriptions[conn].add(pattern)
+                # We make a copy of the retained items while under the lock to safely iterate over them on a list
+            retained_items = list(self._retained.items())
+
         # TODO (Feature 2 - retained messages): a subscriber that connects AFTER
         # a retained message was published must receive the last retained
         # payload of every topic that matches its new subscription.
+
+        for topic, payload in retained_items:
+            # To handle new subscriptions properly we use the provided 'matches' function
+            if matches(pattern, topic):
+                self._send(conn, {"op": "msg", "topic": topic, "payload": payload})
 
     def publish(self, topic: str, payload, retain: bool = False) -> int:
         """Deliver payload to every subscriber whose pattern matches. Returns #delivered."""
