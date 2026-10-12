@@ -4,3 +4,4 @@ device      device_service    5001
 reading     reading_service   5002
 alert       alert_service     5003
 auth        auth_service      5004
+audit       audit_service     5005
