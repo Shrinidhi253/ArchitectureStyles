@@ -102,3 +102,24 @@ def login_user():
     db.commit()
     
     return jsonify(token = token), 200
+
+@app.get("/validate")
+def validate_session(): #checks if the token is valid
+    auth_header = request.headers.get("Authorization", "") #the token is passed in the headers
+
+    if not auth_header.startswith("Bearer "): #The header is of the format Authorization: Bearer <credential>
+        return jsonify(error = "missing or malformed authorization header"), 401
+    
+    token = auth_header[len("Bearer"):].strip #only slice the token credentials
+
+    #check if the token exists in the database. if the token exists, return the username of the user
+    db = get_db()
+    row = db.execute("""SELECT users.username FROM tokens
+                        JOIN users ON users.user_id = tokens.user_id
+                        WHERE tokens.token = ?;
+                    """, (token,)).fetchone()
+    
+    if row is None: #if token row couldn't be found, return invalid token error
+        return jsonify(error = "invalid token"), 401
+    
+    return jsonify(username = row["username"]), 200
