@@ -7,13 +7,17 @@ concerns; the domain services must stay unaware of them.
 import os
 
 import requests
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, g
 
 DEVICE_URL = os.environ.get("DEVICE_URL", "http://127.0.0.1:5001")
 READING_URL = os.environ.get("READING_URL", "http://127.0.0.1:5002")
 ALERT_URL = os.environ.get("ALERT_URL", "http://127.0.0.1:5003")
 AUTH_URL = os.environ.get("AUTH_URL", "http://127.0.0.1:5004")
+AUDIT_URL = os.environ.get("AUDIT_URL", "http://127.0.0.1:5005")
+
 PUBLIC_PATHS = {"/api/auth/register", "/api/auth/login"}
+ACTIONS = {"GET": "RETRIEVE", "POST": "CREATE", "DELETE": "DELETE"} #maps GET POST DELETE with their respective actions for audit log
+
 
 app = Flask(__name__)
 
@@ -148,6 +152,7 @@ def check_token():
     if validate_response.status_code != 200:
         return jsonify(error = "auth service error"), 502
     
+    g.username = validate_response.json()["username"]
     return None
         
 #forward register and login requests
@@ -159,7 +164,38 @@ def auth_register():
 def auth_login():
     return forward(AUTH_URL, "/login")
 
-# TODO (Feature 3): record every /api/* action in an audit service; GET /api/audit.
+# (Feature 3): record every /api/* action in an audit service; GET /api/audit.
+@app.after_request
+def audit(response):
+    if not request.path.startswith("/api/") or request.method not in ACTIONS: #only care about /api/ actions specifically only GET POST DELETE (or CREATE RETRIEVE DELETE)
+        return response
+    
+    failed = response.status_code >= 400
+    detail = None
+
+    if failed:
+        body = response.get_json(silent = True) or {}
+        detail = body.get("error") or body.get("detail") or f"HTTP {response.status_code}"
+    entry = {
+        "username"  : getattr(g, "username", "anonymous"),
+        "action"    : ACTIONS[request.method],
+        "resource"  : request.path,
+        "outcome"   : "error" if failed else "ok",
+        "detail"    : detail
+    }
+
+    try: #send the entry to the audit service to add to its db
+        requests.post(f"{AUDIT_URL}/audit", json = entry, timeout = 2)
+
+    except requests.RequestException as request_exception:
+        app.logger.warning("audit service unavailable: %s", request_exception)
+
+    return response
+
+#forward the get log request
+@app.get("/api/audit")
+def get_audit_log():
+    return forward(AUDIT_URL, "/audit")
 
 @app.errorhandler(404)
 def not_found(_exc):

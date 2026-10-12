@@ -124,6 +124,12 @@ def validate_session(): #checks if the token is valid
     
     return jsonify(username = row["username"]), 200
 
+#error handling block similar to other services
+@app.errorhandler(Exception)
+def unhandled(exc):
+    app.logger.exception("unhandled error")
+    return jsonify(error="internal error", detail=str(exc)), 500
+
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=int(os.environ.get("AUTH_PORT", 5004)))
