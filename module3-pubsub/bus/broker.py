@@ -131,7 +131,7 @@ class Broker:
                 # We make a copy of the retained items while under the lock to safely iterate over them on a list
             retained_items = list(self._retained.items())
 
-        # TODO (Feature 2 - retained messages): a subscriber that connects AFTER
+        # (Feature 2 - retained messages): a subscriber that connects AFTER
         # a retained message was published must receive the last retained
         # payload of every topic that matches its new subscription.
 
@@ -144,7 +144,7 @@ class Broker:
         """Deliver payload to every subscriber whose pattern matches. Returns #delivered."""
         with self._lock:
             self.stats["published"] += 1
-        # TODO (Feature 2 - retained messages): remember the last payload of
+        # (Feature 2 - retained messages): remember the last payload of
         # topics published with retain=True (an empty payload clears it).
 
         if retain:

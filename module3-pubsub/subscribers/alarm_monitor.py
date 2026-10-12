@@ -106,7 +106,7 @@ class AlarmMonitor:
         with self._lock:
             acknowledged_count = self.machine.on_ack(room)
             
-        print(f"[alarm_monitor] Operator ACKed {acknowledged_count} alarms for room {room}")
+        print(f"[alarm_monitor] Successfully muted {acknowledged_count} acknowledged alarms in room {room}")
 
 
 def main() -> None:
