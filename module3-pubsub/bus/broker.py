@@ -147,13 +147,13 @@ class Broker:
         # (Feature 2 - retained messages): remember the last payload of
         # topics published with retain=True (an empty payload clears it).
 
-        if retain:
-                if payload is None:
-                    # If payload = None, remove the retained message if it exists
-                    self._retained.pop(topic, None)
-                else:
-                    # Otherwise, store or overwrite the retained payload for this topic with retain=True logic
-                    self._retained[topic] = payload
+            if retain:
+                    if payload is None:
+                        # If payload = None, remove the retained message if it exists
+                        self._retained.pop(topic, None)
+                    else:
+                        # Otherwise, store or overwrite the retained payload for this topic with retain=True logic
+                        self._retained[topic] = payload
 
         with self._lock:
             targets: List[Tuple[socket.socket, str]] = [
