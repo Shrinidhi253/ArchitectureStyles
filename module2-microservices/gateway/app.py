@@ -7,11 +7,18 @@ concerns; the domain services must stay unaware of them.
 import os
 
 import requests
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, g
 
 DEVICE_URL = os.environ.get("DEVICE_URL", "http://127.0.0.1:5001")
 READING_URL = os.environ.get("READING_URL", "http://127.0.0.1:5002")
 ALERT_URL = os.environ.get("ALERT_URL", "http://127.0.0.1:5003")
+AUTH_URL = os.environ.get("AUTH_URL", "http://127.0.0.1:5004")
+AUDIT_URL = os.environ.get("AUDIT_URL", "http://127.0.0.1:5005")
+
+PUBLIC_PATHS = {"/api/auth/register", "/api/auth/login"}
+ACTIONS = {"GET": "RETRIEVE", "POST": "CREATE", "DELETE": "DELETE"} #maps GET POST DELETE with their respective actions for audit log
+
+
 app = Flask(__name__)
 
 
@@ -53,7 +60,60 @@ def device(device_id):
     return forward(DEVICE_URL, f"/devices/{device_id}")
 
 
-# TODO (Feature 1): DELETE /api/devices/<id>
+# (Feature 1): DELETE /api/devices/<id>
+@app.delete("/api/devices/<int:device_id>")
+def route_delete_devices_request(device_id): #flask will pass the device_id from the url to this function
+    # readings db holds a reference to device_id, i.e. readings depends on device
+    # so delete readings first before deleting devices
+
+    # DELETE READINGS:
+    try:
+        #create a delete request to the readings_service with the device_id parameter
+        readings_response = requests.delete(
+                                url = f"{READING_URL}/readings",
+                                params = {"device_id" : device_id},
+                                timeout = 5
+                            )
+    except requests.RequestException as request_exception:
+        return jsonify(
+                error = "Reading service unavailable. Device readings could not be deleted",
+                detail = str(request_exception)
+            ), 503
+    
+    # if the reading service responded with any error:
+    if readings_response.status_code != 200:
+        return jsonify (
+                error = "Reading service failed. Device readings could not be deleted.",
+                upstream_status = readings_response.status_code
+            ), 502
+    
+    # DELETE THE DEVICE
+    try:
+        device_response = requests.delete(
+                                url = f"{DEVICE_URL}/devices/{device_id}",
+                                timeout = 5
+                            )
+    except requests.RequestException as request_exception:
+        return jsonify(
+                error = "Device service unavailable. Readings were deleted but device still exists.",
+                detail = str(request_exception)
+            ), 503
+
+    #if the device service responded with any error:
+    if device_response.status_code == 404:
+        return jsonify(error = "Device not found."), 404
+    
+    elif device_response.status_code != 200:
+        return jsonify(
+                error = "Device service failed. Readings are deleted but device still exists.",
+                upstream_status = device_response.status_code
+            ), 502
+
+    #if both readings and device have been deleted successfully:
+    return jsonify(
+            deleted = device_id,
+            num_readings_deleted = readings_response.json().get("deleted")
+        ), 200    
 
 # ---- readings ----------------------------------------------------------
 @app.route("/api/readings", methods=["GET", "POST"])
@@ -67,10 +127,75 @@ def alerts():
     return forward(ALERT_URL, "/alerts")
 
 
-# TODO (Feature 2): /api/auth/register, /api/auth/login and a check that every
-#                   other /api/* request carries a valid token.
-# TODO (Feature 3): record every /api/* action in an audit service; GET /api/audit.
+# (Feature 2): /api/auth/register, /api/auth/login and a check that every
+#              other /api/* request carries a valid token.
+@app.before_request
+def check_token():
+    #check token should only happen for /api/* requests that are NOT login or register (because you get a token only when you login)
+    if (not request.path.startswith("/api/") #i.e. not an /api/* request
+        or request.path in PUBLIC_PATHS      #i.e. register/ login request
+       ):
+            return None
+    
+    try:
+        validate_response = requests.get(f"{AUTH_URL}/validate",
+                                         headers = {"Authorization" : request.headers.get("Authorization", "")}, #pass the credentials as Authorization header
+                                         timeout = 2
+                                        )
+    except requests.RequestException as request_exception:
+        return jsonify(error = "auth service unavailable", detail = str(request_exception)), 503
+    
+    #return errors from the auth services
+    if validate_response.status_code == 401:
+        return jsonify(error = "missing or invalid token"), 401
+    
+    if validate_response.status_code != 200:
+        return jsonify(error = "auth service error"), 502
+    
+    g.username = validate_response.json()["username"]
+    return None
+        
+#forward register and login requests
+@app.post("/api/auth/register")
+def auth_register():
+    return forward(AUTH_URL, "/register")
 
+@app.post("/api/auth/login")
+def auth_login():
+    return forward(AUTH_URL, "/login")
+
+# (Feature 3): record every /api/* action in an audit service; GET /api/audit.
+@app.after_request
+def audit(response):
+    if not request.path.startswith("/api/") or request.method not in ACTIONS: #only care about /api/ actions specifically only GET POST DELETE (or CREATE RETRIEVE DELETE)
+        return response
+    
+    failed = response.status_code >= 400
+    detail = None
+
+    if failed:
+        body = response.get_json(silent = True) or {}
+        detail = body.get("error") or body.get("detail") or f"HTTP {response.status_code}"
+    entry = {
+        "username"  : getattr(g, "username", "anonymous"),
+        "action"    : ACTIONS[request.method],
+        "resource"  : request.path,
+        "outcome"   : "error" if failed else "ok",
+        "detail"    : detail
+    }
+
+    try: #send the entry to the audit service to add to its db
+        requests.post(f"{AUDIT_URL}/audit", json = entry, timeout = 2)
+
+    except requests.RequestException as request_exception:
+        app.logger.warning("audit service unavailable: %s", request_exception)
+
+    return response
+
+#forward the get log request
+@app.get("/api/audit")
+def get_audit_log():
+    return forward(AUDIT_URL, "/audit")
 
 @app.errorhandler(404)
 def not_found(_exc):

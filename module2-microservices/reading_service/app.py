@@ -98,8 +98,25 @@ def create_reading():
     return jsonify(reading=reading, alert=alert), 201
 
 
-# TODO (Feature 1): DELETE /readings?device_id=<id>  (needed so a device delete can
-#                   remove its readings WITHOUT the device service touching readings.db)
+# (Feature 1): DELETE /readings?device_id=<id>  (needed so a device delete can
+#              remove its readings WITHOUT the device service touching readings.db)
+@app.delete("/readings")
+def delete_readings():
+    #Given that the DELETE request has argument device_id=<id>, So get the value of the device_id from the request arg
+    device_id = request.args.get("device_id", type = int)
+
+    if device_id is None:
+        return jsonify(error="device_id (int) is required"), 400
+    
+    #if a device_is given in the request, delete the rows for that device in the readings db
+    db = get_db()
+    cursor = db.execute("DELETE FROM readings WHERE device_id = ?;", (device_id,))
+    db.commit()
+
+    return jsonify(deleted = cursor.rowcount), 200 #return the number of rows deleted as a part success message.
+
+
+
 
 
 @app.errorhandler(Exception)
