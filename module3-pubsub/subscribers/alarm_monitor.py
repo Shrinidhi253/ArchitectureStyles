@@ -49,9 +49,18 @@ class AlarmStateMachine:
 
     def on_ack(self, room: str) -> int:
         """Feature 3: acknowledge every active alarm of the room. Returns #acknowledged."""
-        # TODO (Feature 3): move every (room, *) entry that is in state ALARM to ACKED
+        # (Feature 3): move every (room, *) entry that is in state ALARM to ACKED
         # and return how many were acknowledged.
-        raise NotImplementedError("TODO: implement AlarmStateMachine.on_ack")
+
+        count = 0
+        # It will iterate over all current states to find active alarms in the current room
+        for key in list(self.state.keys()):
+            current_room, rtype = key
+            # If it belongs to the target room and the state is is currently in ALARM state, acknowledge it
+            if current_room == room and self.state[key] == ALARM:
+                self.state[key] = ACKED
+                count += 1
+        return count
 
 
 class AlarmMonitor:
@@ -64,7 +73,9 @@ class AlarmMonitor:
     def start(self) -> None:
         self.client.subscribe("building/+/temperature", self.on_reading)
         self.client.subscribe("building/+/co2", self.on_reading)
-        # TODO (Feature 3): subscribe to acknowledgements  alarm/+/ack  -> self.on_ack
+        # (Feature 3): subscribe to acknowledgements  alarm/+/ack  -> self.on_ack
+        # Subscribe to the acknowledgement topic using "+" wildcards for the room
+        self.client.subscribe("alarm/+/ack", self.on_ack)
 
     def on_reading(self, topic: str, payload) -> None:
         try:
@@ -82,9 +93,20 @@ class AlarmMonitor:
             print(f"[alarm_monitor] ALARM {room} {alarm}")
 
     def on_ack(self, topic: str, payload) -> None:
-        # TODO (Feature 3): parse the room from the topic, call machine.on_ack(room)
+        # (Feature 3): parse the room from the topic, call machine.on_ack(room)
         # under the lock and print a confirmation.
-        raise NotImplementedError("TODO: implement AlarmMonitor.on_ack")
+        try:
+            # Parse the room from the topic string, for example, "alarm/B201/ack" -> "B201"
+            parts = topic.split("/")
+            room = parts[1]
+        except IndexError:
+            return
+            
+        # It calls the state machine under the lock to prevent existing modifications
+        with self._lock:
+            acknowledged_count = self.machine.on_ack(room)
+            
+        print(f"[alarm_monitor] Successfully muted {acknowledged_count} acknowledged alarms in room {room}")
 
 
 def main() -> None:

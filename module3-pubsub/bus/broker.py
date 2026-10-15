@@ -128,16 +128,33 @@ class Broker:
         with self._lock:
             if conn in self._subscriptions:
                 self._subscriptions[conn].add(pattern)
-        # TODO (Feature 2 - retained messages): a subscriber that connects AFTER
+                # We make a copy of the retained items while under the lock to safely iterate over them on a list
+            retained_items = list(self._retained.items())
+
+        # (Feature 2 - retained messages): a subscriber that connects AFTER
         # a retained message was published must receive the last retained
         # payload of every topic that matches its new subscription.
+
+        for topic, payload in retained_items:
+            # To handle new subscriptions properly we use the provided 'matches' function
+            if matches(pattern, topic):
+                self._send(conn, {"op": "msg", "topic": topic, "payload": payload})
 
     def publish(self, topic: str, payload, retain: bool = False) -> int:
         """Deliver payload to every subscriber whose pattern matches. Returns #delivered."""
         with self._lock:
             self.stats["published"] += 1
-        # TODO (Feature 2 - retained messages): remember the last payload of
+        # (Feature 2 - retained messages): remember the last payload of
         # topics published with retain=True (an empty payload clears it).
+
+            if retain:
+                    if payload is None:
+                        # If payload = None, remove the retained message if it exists
+                        self._retained.pop(topic, None)
+                    else:
+                        # Otherwise, store or overwrite the retained payload for this topic with retain=True logic
+                        self._retained[topic] = payload
+
         with self._lock:
             targets: List[Tuple[socket.socket, str]] = [
                 (conn, pattern)
