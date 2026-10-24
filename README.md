@@ -28,6 +28,7 @@ The project has the same domain across the 3 modules, but they have very differe
 
 ## Repository layout
 ```
+diagram/                #diagrams for each module design
 module1-pipeline/
 module2-microservices/
 module3-pubsub/
