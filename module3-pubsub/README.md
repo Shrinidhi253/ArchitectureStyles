@@ -12,6 +12,9 @@ alarm_monitor    ──pub──►  (+ and # wildcards)
 
 Topics: `building/<room>/temperature|co2|power`, `alarm/<room>`, `alarm/<room>/ack`.
 
+> [!TIP]
+> Check out [Module 3 demo and explanation](/screencast-recordings/module3_screencast.mp4)
+
 ## Sequence diagram for Pub-sub
 ![Pub-sub sequence diagram legend](/diagrams/pubsub-diagram-legend.png)
 
