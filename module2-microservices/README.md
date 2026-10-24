@@ -18,9 +18,6 @@ client ──► gateway (5000) ──► device_service  (5001)  devices.db
 | `GET /api/alerts`               | alert_service `/alerts`          |
 | `GET /health`                   | pings every service              |
 
-> [!TIP]
-> Check out [Module 2 demo and explanation](/screencast-recordings/module2_screencast.mp4)
-
 ## Container diagram of the microservices
 ![Microservices container diagram](/diagrams/microservices-diagram.jpg)
 
