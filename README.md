@@ -11,8 +11,10 @@ This was a course project for **DIT349 Fundamentals of Software Architecture cou
 | Module 2 | Microservices | Device, reading, alert, authentication, auditing services behind an API gateway. One database per service | Shrinidhi Ganapathi |
 | Module 3 | Publish-subscribe | Event bus with a broker, sensor publishers, dashboard, alarm monitor, and energy logger | [Josefina Faundez Reyes](https://github.com/jojosefin) |
 
+<br><br>
+
 > [!NOTE]
-> Each module has its own README with how to run it, architecture, design decisions, and [diagrams]().
+> Each module has its own README with how to run it, architecture, design decisions, and [diagrams](https://github.com/Shrinidhi253/ArchitectureStyles/tree/main/diagrams).
 
 ## Why this project is interesting:
 
