@@ -12,6 +12,11 @@ alarm_monitor    ──pub──►  (+ and # wildcards)
 
 Topics: `building/<room>/temperature|co2|power`, `alarm/<room>`, `alarm/<room>/ack`.
 
+## Sequence diagram for Pub-sub
+![Pub-sub sequence diagram legend](/diagrams/pubsub-diagram-legend.png)
+
+![Pub-sub sequence diagram](/diagrams/pubsub-diagram.jpg)
+
 ## Run
 
 ```bash

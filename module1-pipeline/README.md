@@ -11,6 +11,9 @@ read_jsonl -> validate -> convert_units -> moving_average -> threshold_alarm -> 
 Every filter runs in its own thread and communicates **only** through its
 input and output pipe (`pipeline/core.py`). Filters never call each other.
 
+## UML component diagram of the pipeline
+![Pipe-and-filter UML diagram](/diagrams/pipe-and-filter-diagram.jpg)
+
 ## Run
 
 ```bash
