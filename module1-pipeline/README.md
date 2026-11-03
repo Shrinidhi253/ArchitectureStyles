@@ -24,12 +24,6 @@ python -m pipeline.main data/readings.jsonl out/
 Outputs: `out/readings_clean.jsonl` (normalised, smoothed readings) and
 `out/alarms.jsonl` (threshold violations).
 
-## Your task
-
-Implement the three classes in `pipeline/student_filters.py`. The docstring of
-each class is the specification. Do not modify `core.py`, `filters.py`,
-`main.py`, the data or the tests.
-
 ## Test
 
 ```bash

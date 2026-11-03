@@ -29,19 +29,6 @@ python -m publishers.operator_console B201 --by you # in a 3rd terminal (Feature
 Or start the pieces yourself: `python -m bus.broker`, `python -m subscribers.alarm_monitor`,
 `python -m publishers.sensor_simulator`.
 
-## Your task
-
-* **Feature 1** – `subscribers/energy_logger.py` (new subscriber, no publisher changes).
-* **Feature 2** – retained messages in `bus/broker.py` (two `TODO` markers).
-* **Feature 3** – alarm acknowledgement in `subscribers/alarm_monitor.py` (three `TODO` markers).
-
-Do not change `bus/client.py`, `bus/topics.py`, the publishers, or anything under
-`tests/` (including `conftest.py`). In `bus/broker.py` fill in the two `TODO`
-markers and leave the rest alone — in particular the observation methods
-`subscription_count()`, `retained_snapshot()` and `stats`, which the tests use to
-watch the broker without touching its private attributes. Feature 2 must keep the
-`_retained` dict up to date; `retained_snapshot()` returns a copy of it.
-
 ## Test
 
 ```bash

@@ -33,18 +33,6 @@ curl -X POST localhost:5000/api/readings -H 'Content-Type: application/json' \
 curl localhost:5000/api/alerts
 ```
 
-## Your task
-
-Implement the three features in the assignment description. New services go in
-their own directory (`<name>_service/app.py`) and are registered in
-`services.txt`; `run_all.py` gives every service `<NAME>_PORT`, `<NAME>_DB` and
-`<NAME>_URL` variables. Rules that the tests and the TA will check:
-
-* a service never opens another service's database file;
-* a service never imports another service's Python module;
-* the gateway owns no data; authentication and audit logging are its concern,
-  the domain services must not know about users or tokens.
-
 ## Test
 
 ```bash
